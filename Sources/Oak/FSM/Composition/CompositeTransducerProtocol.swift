@@ -159,21 +159,20 @@ where
     ) async throws -> Output
     where P: ProductTypeProxy, P.ProxyA == TransducerA.Proxy, P.ProxyB == TransducerB.Proxy {
         // Create output subjects that wrap the outputs from each component
+        nonisolated(unsafe) let unsafeOutput = output
         let outputA = SyncCallback<TransducerA.Output> { valueA, actor in
             guard actor === systemActor else {
                 return
             }
-            nonisolated(unsafe) let output = output
-            try await output.send(.outputA(valueA), isolated: actor)
+            try await unsafeOutput.send(.outputA(valueA), isolated: actor)
         }
         let outputB = SyncCallback<TransducerB.Output> { valueB, actor in
             guard actor === systemActor else {
                 return
             }
-            nonisolated(unsafe) let output = output
-            try await output.send(.outputB(valueB), isolated: actor)
+            try await unsafeOutput.send(.outputB(valueB), isolated: actor)
         }
-
+        
         // Set up task to run transducer A
         let transducerTaskA = Task {
             return try await TransducerA.run(
